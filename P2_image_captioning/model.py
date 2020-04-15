@@ -22,7 +22,7 @@ class EncoderCNN(nn.Module):
     
 
 class DecoderRNN(nn.Module):
-    def __init__(self, embed_size, hidden_size, vocab_size, num_layers=2):
+    def __init__(self, embed_size, hidden_size, vocab_size, num_layers):
         super().__init__()
         self.lstm = nn.LSTM(input_size=embed_size,
                             hidden_size=hidden_size,
@@ -41,4 +41,18 @@ class DecoderRNN(nn.Module):
 
     def sample(self, inputs, states=None, max_len=20):
         " accepts pre-processed image tensor (inputs) and returns predicted sentence (list of tensor ids of length max_len) "
-        pass
+        # Assumes inputs is shape N, L, C
+        predicts = []
+        for i in range(max_len):
+            if i == 0:
+                outputs, (h, c) = self.lstm(inputs)  # Keep the states, use 0 default at first step
+            else:
+                outputs, (h, c) = self.lstm(inputs, (h, c))  # Pass the states to the LSTM
+            # Predict
+            logits = self.lin_out(outputs)
+            new_word = logits.argmax(2).long()
+            predicts.append(new_word.item())
+            # Update new inputs
+            inputs = self.embed(new_word)
+            
+        return predicts
